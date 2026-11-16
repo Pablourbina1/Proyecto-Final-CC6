@@ -101,6 +101,6 @@
 <footer>
       <p>Pablo David Urbina - 24001508</p>
       <p>Angel David Camargo - 24003664</p>
-      <p>David Ortega - 24000532</p>
+      <p>Marco Reyna - 24004269</p>
    </footer>
 </html>

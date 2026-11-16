@@ -30,10 +30,28 @@
         $result = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
         $anterior = pg_fetch_assoc($result)["anterior"];
 
+        $query = "SELECT MIN(Fecha_inicio) AS posterior FROM Fase
+            WHERE ID_proyecto = $id_proyecto AND Orden > $orden AND ID_fase <> $id_fase";
+        $result = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+        $posterior = pg_fetch_assoc($result)["posterior"];
+
+        $query = "SELECT Titulo FROM Tarea
+            WHERE ID_fase = $id_fase AND Fecha_limite::date > '$limite'";
+        $resultTareas = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+
         if($limite < $inicio){
             $mensaje = "<p class='error'>Error: La fecha limite debe ser despues de la fecha de inicio</p>";
         } else if($anterior != null && $inicio < $anterior){
             $mensaje = "<p class='error'>Error: La fase debe iniciar despues del $anterior (fin de la fase anterior)</p>";
+        } else if($posterior != null && $limite > $posterior){
+            $mensaje = "<p class='error'>Error: La fase debe terminar antes del $posterior (inicio de la fase siguiente)</p>";
+        } else if(pg_num_rows($resultTareas) > 0){
+            $tareas = [];
+            while($t = pg_fetch_assoc($resultTareas)){
+                $tareas[] = htmlspecialchars($t["titulo"]);
+            }
+            $mensaje = "<p class='error'>Error: Estas tareas tienen fecha limite despues del $limite: "
+                . implode(", ", $tareas) . ". Cambia su fecha primero</p>";
         } else {
             $query = "UPDATE Fase SET Nombre = '$nombre', Orden = $orden,
                 Fecha_inicio = '$inicio', Fecha_limite = '$limite'

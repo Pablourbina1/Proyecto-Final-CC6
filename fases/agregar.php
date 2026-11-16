@@ -16,16 +16,22 @@
         $inicio = pg_escape_string($conn, $_POST["Fecha_inicio"]);
         $limite = pg_escape_string($conn, $_POST["Fecha_limite"]);
 
-//La fase debe iniciar despues de que termine la fase anterior
         $query = "SELECT MAX(Fecha_limite) AS anterior FROM Fase
             WHERE ID_proyecto = $id_proyecto AND Orden < $orden";
         $result = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
         $anterior = pg_fetch_assoc($result)["anterior"];
 
+        $query = "SELECT MIN(Fecha_inicio) AS posterior FROM Fase
+            WHERE ID_proyecto = $id_proyecto AND Orden > $orden";
+        $result = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+        $posterior = pg_fetch_assoc($result)["posterior"];
+
         if($limite < $inicio){
             $mensaje = "<p class='error'>Error: La fecha limite debe ser despues de la fecha de inicio</p>";
         } else if($anterior != null && $inicio < $anterior){
             $mensaje = "<p class='error'>Error: La fase debe iniciar despues del $anterior (fin de la fase anterior)</p>";
+        } else if($posterior != null && $limite > $posterior){
+            $mensaje = "<p class='error'>Error: La fase debe terminar antes del $posterior (inicio de la fase siguiente)</p>";
         } else {
             $query = "INSERT INTO Fase (Nombre, Orden, Fecha_inicio, Fecha_limite, ID_proyecto)
                 VALUES ('$nombre', $orden, '$inicio', '$limite', $id_proyecto)";

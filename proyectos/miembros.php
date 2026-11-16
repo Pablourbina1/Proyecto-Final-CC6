@@ -24,18 +24,34 @@
                 $mensaje = "<p class='exito'>Miembro agregado</p>";
             }
         } else if($_POST["accion"] == "quitar"){
-            $query = "DELETE FROM Asignacion WHERE ID_usuario = $id_usuario AND ID_tarea IN (
-                SELECT T.ID_tarea FROM Tarea T JOIN Fase F ON T.ID_fase = F.ID_fase
-                WHERE F.ID_proyecto = $id_proyecto)";
-            pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+            $query = "SELECT T.Titulo FROM Tarea T
+                JOIN Fase F ON T.ID_fase = F.ID_fase
+                JOIN Asignacion A ON A.ID_tarea = T.ID_tarea
+                WHERE F.ID_proyecto = $id_proyecto AND A.ID_usuario = $id_usuario
+                AND (SELECT COUNT(*) FROM Asignacion A2 WHERE A2.ID_tarea = T.ID_tarea) = 1";
+            $result = pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
 
-            $query = "DELETE FROM Miembro WHERE ID_proyecto = $id_proyecto AND ID_usuario = $id_usuario";
-            pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+            if(pg_num_rows($result) > 0){
+                $tareas = [];
+                while($t = pg_fetch_assoc($result)){
+                    $tareas[] = htmlspecialchars($t["titulo"]);
+                }
+                $mensaje = "<p class='error'>Error: No se puede quitar a " . htmlspecialchars($usuario["nombre"]) . " porque es el unico asignado de: "
+                    . implode(", ", $tareas) . ". Reasigna esas tareas primero</p>";
+            } else {
+                $query = "DELETE FROM Asignacion WHERE ID_usuario = $id_usuario AND ID_tarea IN (
+                    SELECT T.ID_tarea FROM Tarea T JOIN Fase F ON T.ID_fase = F.ID_fase
+                    WHERE F.ID_proyecto = $id_proyecto)";
+                pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
 
-            $query = "INSERT INTO Bitacora (Accion, ID_usuario, ID_proyecto)
-                VALUES ('quito a $nombre_usuario del proyecto', $id, $id_proyecto)";
-            pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
-            $mensaje = "<p class='exito'>Miembro eliminado del proyecto</p>";
+                $query = "DELETE FROM Miembro WHERE ID_proyecto = $id_proyecto AND ID_usuario = $id_usuario";
+                pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+
+                $query = "INSERT INTO Bitacora (Accion, ID_usuario, ID_proyecto)
+                    VALUES ('quito a $nombre_usuario del proyecto', $id, $id_proyecto)";
+                pg_query($conn, $query) or die('La query fallo: ' .pg_last_error($conn));
+                $mensaje = "<p class='exito'>Miembro eliminado del proyecto</p>";
+            }
         }
     }
 ?>
